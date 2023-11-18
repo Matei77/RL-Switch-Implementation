@@ -83,10 +83,11 @@ def create_vlan_tag(vlan_id):
  
 def send_bpdu_every_sec(own_bridge_id, root_info, trunk_interfaces_states):
     # get root_bridge_id and root_path_cost from mutable container in order to reflect changes
-    root_bridge_id = root_info[0]
-    root_path_cost = root_info[1]
 
     while True:
+        root_bridge_id = root_info[0]
+        root_path_cost = root_info[1]
+        
         if root_bridge_id == own_bridge_id:
             for i in trunk_interfaces_states.keys():
                 if trunk_interfaces_states[i] == "Listening":
