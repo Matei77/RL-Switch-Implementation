@@ -38,8 +38,24 @@ def send_bdpu_every_sec():
 
 def forward_package(recv_interface, data, length, mac_table, interfaces, vlan_map):
     dest_mac, src_mac, ethertype, vlan_id = parse_ethernet_header(data)
+
+    # Print the MAC src and MAC dst in human readable format
+    dest_mac = ':'.join(f'{b:02x}' for b in dest_mac)
+    src_mac = ':'.join(f'{b:02x}' for b in src_mac)
+
+    #print debug info
+    if __debug__:
+        print("---------------------------------------------")
+        print("                [FRAME INFO]")
+        print(f'Destination MAC: {dest_mac}')
+        print(f'Source MAC: {src_mac}')
+        print(f'EtherType: {ethertype}')
+        print(f'Vlan ID: {vlan_id}')
+        print("\n")
+        print("[SWITCH] Received frame of size {} on interface {}".format(length, get_interface_name(recv_interface)))
+    
     mac_table[src_mac] = recv_interface
-    print("[SWITCH] Received frame of size {} on interface {}".format(length, get_interface_name(recv_interface)))
+    
     # new_data is the header with the vlan tag if it doesn't have it 
     # or without the vlan tag if it does have it
     if vlan_id == -1:
@@ -50,58 +66,63 @@ def forward_package(recv_interface, data, length, mac_table, interfaces, vlan_ma
     
     # came from access type interface
     if vlan_id == -1:
-        # dest_mac != bytes.fromhex("FFFFFFFFFFFF") and //// it is unicast and 
-
         # check if the destination is access type, with a known mac and in the same vlan
         if dest_mac in mac_table and vlan_map[mac_table[dest_mac]] == vlan_map[recv_interface]:
-            # print("\n----> [SWITCH ACTION] Unicast\n")
-            print("[SWITCH] Sending to access interface ", get_interface_name(mac_table[dest_mac]))
             send_to_link(mac_table[dest_mac], data, length)
+            if __debug__:
+                print("[SWITCH] Sending to access interface ", get_interface_name(mac_table[dest_mac]))
         
         # check if the destination is trunk, with a knwon mac
         elif dest_mac in mac_table and vlan_map[mac_table[dest_mac]] == 'T':
-            # print("\n----> [SWITCH ACTION] Unicast\n")
-            print("[SWITCH] Sending to trunk interface ", get_interface_name(mac_table[dest_mac]))
             send_to_link(mac_table[dest_mac], new_data, len(new_data))
+            if __debug__:
+                print("[SWITCH] Sending to trunk interface ", get_interface_name(mac_table[dest_mac]))
         
         # destination mac is unkown or broadcast is sent
         else:
-            # print("\n----> [SWITCH ACTION] Flooding\n")
             for i in interfaces:
                 # send to all access interfaces in the same vlan 
                 if i != recv_interface and vlan_map[recv_interface] == vlan_map[i]:
-                    print("[SWITCH] Sending to access interface ", get_interface_name(i))
                     send_to_link(i, data, length)
+                    if __debug__:
+                        print("[SWITCH] Sending to access interface ", get_interface_name(i))
                 # send to all trunk interfaces
                 elif i != recv_interface and vlan_map[i] == 'T':
-                    print("[SWITCH] Sending to trunk interface ", get_interface_name(i))
                     send_to_link(i, new_data, len(new_data))
+                    if __debug__:
+                        print("[SWITCH] Sending to trunk interface ", get_interface_name(i))
     
     # came from trunk
     else:
         # check if the destination is access type, with a known mac and 
         # the destination vlan is the same with the tag
         if dest_mac in mac_table and vlan_map[mac_table[dest_mac]] == str(vlan_id):
-            print("[SWITCH] Sending to access interface ", get_interface_name(mac_table[dest_mac]))
             send_to_link(mac_table[dest_mac], new_data, len(new_data))
+            if __debug__:
+                print("[SWITCH] Sending to access interface ", get_interface_name(mac_table[dest_mac]))
         
         #check if the destination is trunk, with a known mac
         elif dest_mac in mac_table and vlan_map[mac_table[dest_mac]] == 'T':
-            print("[SWITCH] Sending to trunk interface ", get_interface_name(mac_table[dest_mac]))
             send_to_link(mac_table[dest_mac], data, length)
+            if __debug__:
+                print("[SWITCH] Sending to trunk interface ", get_interface_name(mac_table[dest_mac]))
 
         #destination mac is unkown or broadcast is sent
         else:
             for i in interfaces:
                 # send to all access interfaces in the same vlan 
                 if i != recv_interface and str(vlan_id) == vlan_map[i]:
-                    print("[SWITCH] Sending to access interface ", get_interface_name(i))
                     send_to_link(i, new_data, len(new_data))
+                    if __debug__:
+                        print("[SWITCH] Sending to access interface ", get_interface_name(i))
                 # send to all trunk interfaces
                 elif i != recv_interface and vlan_map[i] == 'T':
-                    print("[SWITCH] Sending to trunk interface ", get_interface_name(i))
                     send_to_link(i, data, length)
-
+                    if __debug__:
+                        print("[SWITCH] Sending to trunk interface ", get_interface_name(i))
+    
+    if __debug__:
+        print("---------------------------------------------\n")
 
 
 def main():
@@ -110,14 +131,13 @@ def main():
     switch_id = sys.argv[1]
 
     mac_table = dict()
-
-    # The vlan_map dictionary is mapping the interface number to the vlan.
     vlan_map = dict()
 
     num_interfaces = wrapper.init(sys.argv[2:])
     interfaces = range(0, num_interfaces)
     
     # Set the vlan for each interface.
+    # The vlan_map dictionary is mapping the interface number to the vlan.
     try:
         with open("configs/switch{}.cfg".format(switch_id)) as f:
             lines = f.readlines()
@@ -126,57 +146,29 @@ def main():
                 for i in interfaces:
                     if split_line[0] == get_interface_name(i):
                         vlan_map[i] = split_line[1]
-    except FileExistsError:
-        print("Cannot open file.")
+    except FileNotFoundError:
+        print("[ERROR] Cannot open switch config file.")
         exit(1)
 
-    print("VLAN MAP: ", vlan_map)
-
-    print("# Starting switch with id {}".format(switch_id), flush=True)
-    print("[INFO] Switch MAC", ':'.join(f'{b:02x}' for b in get_switch_mac()))
-
+    # print debug info
+    if __debug__:
+        print("# Starting switch with id {}".format(switch_id), flush=True)
+        print("[INFO] Switch MAC", ':'.join(f'{b:02x}' for b in get_switch_mac()))
+        print("[INFO] VLAN MAP: ", vlan_map)
+        print("\n")
+    
     # Create and start a new thread that deals with sending BDPU
     t = threading.Thread(target=send_bdpu_every_sec)
     t.start()
 
-    # Printing interface names
-    for i in interfaces:
-        print(get_interface_name(i))
 
     while True:
-        # Note that data is of type bytes([...]).
-        # b1 = bytes([72, 101, 108, 108, 111])  # "Hello"
-        # b2 = bytes([32, 87, 111, 114, 108, 100])  # " World"
-        # b3 = b1[0:2] + b[3:4].
         interface, data, length = recv_from_any_link()
-
-        dest_mac, src_mac, ethertype, vlan_id = parse_ethernet_header(data)
-
-        # Print the MAC src and MAC dst in human readable format
-        dest_mac = ':'.join(f'{b:02x}' for b in dest_mac)
-        src_mac = ':'.join(f'{b:02x}' for b in src_mac)
-
-        # Note. Adding a VLAN tag can be as easy as
-        # tagged_frame = data[0:12] + create_vlan_tag(10) + data[12:]
-        print("---------------------------------------------")
-        print("                [FRAME INFO]")
-        print(f'Destination MAC: {dest_mac}')
-        print(f'Source MAC: {src_mac}')
-        print(f'EtherType: {ethertype}')
-        print(f'Vlan ID: {vlan_id}')
-        print("\n")
-        # print("Received frame of size {} on interface {}".format(length, get_interface_name(interface)), flush=True)
-
-        # TODO: Implement forwarding with learning
+        
         forward_package(interface, data, length, mac_table, interfaces, vlan_map)
-
-        print("---------------------------------------------\n")
-        # TODO: Implement VLAN support
 
         # TODO: Implement STP support
 
-        # data is of type bytes.
-        # send_to_link(i, data, length)
 
 if __name__ == "__main__":
     main()
