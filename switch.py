@@ -38,7 +38,17 @@ class BPDU:
         return cls(src_mac, root_bridge_id, sender_bridge_id, sender_path_cost, port_id, message_age)
     
     def __str__(self):
-        return f"Dst MAC: {self.dst_mac}\nSrc MAC: {self.src_mac}\nLLC_Length: {self.llc_length}\nRoot Bridge ID: {self.root_bridge_id} ({self.root_bridge_id.to_bytes(8)})\nRoot Path Cost: {self.sender_path_cost}\nSender Bridge ID: {self.sender_bridge_id} ({self.sender_bridge_id.to_bytes(8)})\nPort ID: {self.port_id}\nMessage age: {self.message_age}\nMax age: {self.max_age}\nHello time: {self.hello_time}\nForward delay: {self.forward_delay}\n"
+        return  f"Dst MAC: {self.dst_mac}\n" + \
+                f"Src MAC: {self.src_mac}\n" + \
+                f"LLC_Length: {self.llc_length}\n" + \
+                f"Root Bridge ID: {self.root_bridge_id} ({self.root_bridge_id.to_bytes(8)})\n" + \
+                f"Root Path Cost: {self.sender_path_cost}\n" + \
+                f"Sender Bridge ID: {self.sender_bridge_id} ({self.sender_bridge_id.to_bytes(8)})\n" + \
+                f"Port ID: {self.port_id}\n" + \
+                f"Message age: {self.message_age}\n" + \
+                f"Max age: {self.max_age}\n" + \
+                f"Hello time: {self.hello_time}\n" + \
+                f"Forward delay: {self.forward_delay}\n"
         
 
     def create_package(self):
