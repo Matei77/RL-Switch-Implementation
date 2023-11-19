@@ -29,7 +29,4 @@ clean:
 	rm -rf $(OBJECTS)  hosts_output router_* dlink.so
 
 run_switch: all
-	python3 -O switch.py $(SWITCH_ID) $$(ifconfig -a | grep -o '^[^ :]*' | grep -v 'lo' | tr '\n' ' ')
-
-run_switch_debug: all
 	python3 switch.py $(SWITCH_ID) $$(ifconfig -a | grep -o '^[^ :]*' | grep -v 'lo' | tr '\n' ' ')
