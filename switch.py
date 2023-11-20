@@ -108,10 +108,9 @@ def send_bpdu_every_sec(own_bridge_id, root_info, trunk_interfaces_states):
         
         if root_bridge_id == own_bridge_id:
             for i in trunk_interfaces_states.keys():
-                if trunk_interfaces_states[i] == "Listening":
-                    bpdu = BPDU(get_switch_mac(), root_bridge_id, own_bridge_id, root_path_cost, i)
-                    pack = bpdu.create_package()
-                    send_to_link(i, pack, len(pack))
+                bpdu = BPDU(get_switch_mac(), root_bridge_id, own_bridge_id, root_path_cost, i)
+                pack = bpdu.create_package()
+                send_to_link(i, pack, len(pack))
         time.sleep(1)
 
 
