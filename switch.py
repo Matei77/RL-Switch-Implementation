@@ -13,7 +13,7 @@ DEBUG = False
 
 class BPDU:
     def __init__(self, src_mac, root_bridge_id, sender_bridge_id, sender_path_cost, interface,
-                 message_age = 0, max_age = 20, hello_time = 0, forward_delay = 0,):
+                 message_age = 0, max_age = 20, hello_time = 0, forward_delay = 0):
         self.dst_mac = bytes.fromhex("0180C2000000")
         self.src_mac = src_mac
         self.llc_length = 38
@@ -41,15 +41,16 @@ class BPDU:
         port_id = int.from_bytes(data[42:44], byteorder='big')
         message_age = int.from_bytes(data[44:46], byteorder='little')
 
-        return cls(src_mac, root_bridge_id, sender_bridge_id, sender_path_cost, port_id, message_age)
+        return cls(src_mac, root_bridge_id, sender_bridge_id, sender_path_cost, port_id, 
+                   message_age)
     
     def __str__(self):
         return  f"Dst MAC: {self.dst_mac}\n" + \
                 f"Src MAC: {self.src_mac}\n" + \
                 f"LLC_Length: {self.llc_length}\n" + \
-                f"Root Bridge ID: {self.root_bridge_id} ({self.root_bridge_id.to_bytes(8)})\n" + \
+                f"Root Bridge ID: {self.root_bridge_id.to_bytes(8)}\n" + \
                 f"Root Path Cost: {self.sender_path_cost}\n" + \
-                f"Sender Bridge ID: {self.sender_bridge_id} ({self.sender_bridge_id.to_bytes(8)})\n" + \
+                f"Sender Bridge ID: {self.sender_bridge_id.to_bytes(8)}\n" + \
                 f"Port ID: {self.port_id}\n" + \
                 f"Message age: {self.message_age}\n" + \
                 f"Max age: {self.max_age}\n" + \
@@ -59,12 +60,15 @@ class BPDU:
 
     def create_package(self):
         # network byte order elements (big-endian)
-        bpdu_package = struct.pack("!6s6sHBBBIBQIQH", self.dst_mac, self.src_mac, self.llc_length, 
-                                   self.dsap, self.ssap, self.control, self.bpdu_header, self.flags,
-                                   self.root_bridge_id, self.sender_path_cost, self.sender_bridge_id, self.port_id)
+        bpdu_package = struct.pack("!6s6sHBBBIBQIQH", self.dst_mac, self.src_mac, self.llc_length,
+                                   self.dsap, self.ssap, self.control, self.bpdu_header,
+                                   self.flags, self.root_bridge_id, self.sender_path_cost,
+                                   self.sender_bridge_id, self.port_id)
         
-        # host byte order elements (little-endian) (in this order, so wireshark shows them correctly)
-        bpdu_package += struct.pack("HHHH", self.message_age, self.max_age, self.hello_time, self.forward_delay)
+        # host byte order elements (little-endian)
+        # (in this order, so wireshark shows them correctly)
+        bpdu_package += struct.pack("HHHH", self.message_age, self.max_age, self.hello_time,
+                                    self.forward_delay)
         
         # add pading
         bpdu_package += struct.pack("8s", bytes(8))
@@ -161,13 +165,19 @@ def check_bpdu_package(data, own_bridge_id, root_info, trunk_interfaces_states, 
     else:
         return
     
+    # if this swith is root set all ports to Designated (Listening)
+    if own_bridge_id == root_bridge_id:
+        for i in trunk_interfaces_states.keys():
+            trunk_interfaces_states[i] = "Listening" # Designated
+    
     # update root info
     root_info[0] = root_bridge_id
     root_info[1] = root_path_cost
     root_info[2] = root_port
     
 
-def forward_package_from_access(recv_interface, data, new_data, length, mac_table, interfaces, vlan_map, trunk_interfaces_states):
+def forward_package_from_access(recv_interface, data, new_data, length, mac_table, interfaces,
+                                vlan_map, trunk_interfaces_states):
     dest_mac, src_mac, ethertype, vlan_id = parse_ethernet_header(data)
     
     # check if the destination is access type, with a known mac and in the same vlan
@@ -177,7 +187,9 @@ def forward_package_from_access(recv_interface, data, new_data, length, mac_tabl
             print("[SWITCH] Sending to access interface ", get_interface_name(mac_table[dest_mac]))
     
     # check if the destination is trunk, with a known mac
-    elif dest_mac in mac_table and vlan_map[mac_table[dest_mac]] == 'T' and trunk_interfaces_states[mac_table[dest_mac]] == "Listening":
+    elif (dest_mac in mac_table and vlan_map[mac_table[dest_mac]] == 'T' and 
+          trunk_interfaces_states[mac_table[dest_mac]] == "Listening"):
+        
         send_to_link(mac_table[dest_mac], new_data, len(new_data))
         if DEBUG:
             print("[SWITCH] Sending to trunk interface ", get_interface_name(mac_table[dest_mac]))
@@ -190,14 +202,18 @@ def forward_package_from_access(recv_interface, data, new_data, length, mac_tabl
                 send_to_link(i, data, length)
                 if DEBUG:
                     print("[SWITCH] Sending to access interface ", get_interface_name(i))
+            
             # send to all trunk interfaces
-            elif i != recv_interface and vlan_map[i] == 'T' and trunk_interfaces_states[i] == "Listening":
+            elif (i != recv_interface and vlan_map[i] == 'T' and 
+                  trunk_interfaces_states[i] == "Listening"):
+                
                 send_to_link(i, new_data, len(new_data))
                 if DEBUG:
                     print("[SWITCH] Sending to trunk interface ", get_interface_name(i))
 
 
-def forward_package_from_trunk(recv_interface, data, new_data, length, mac_table, interfaces, vlan_map, trunk_interfaces_states):
+def forward_package_from_trunk(recv_interface, data, new_data, length, mac_table, interfaces,
+                               vlan_map, trunk_interfaces_states):
     dest_mac, src_mac, ethertype, vlan_id = parse_ethernet_header(data)
     
     # check if the destination is access type, with a known mac and 
@@ -208,7 +224,9 @@ def forward_package_from_trunk(recv_interface, data, new_data, length, mac_table
             print("[SWITCH] Sending to access interface ", get_interface_name(mac_table[dest_mac]))
     
     #check if the destination is trunk, with a known mac
-    elif dest_mac in mac_table and vlan_map[mac_table[dest_mac]] == 'T' and trunk_interfaces_states[mac_table[dest_mac]] == "Listening":
+    elif (dest_mac in mac_table and vlan_map[mac_table[dest_mac]] == 'T' and
+          trunk_interfaces_states[mac_table[dest_mac]] == "Listening"):
+        
         send_to_link(mac_table[dest_mac], data, length)
         if DEBUG:
             print("[SWITCH] Sending to trunk interface ", get_interface_name(mac_table[dest_mac]))
@@ -221,14 +239,18 @@ def forward_package_from_trunk(recv_interface, data, new_data, length, mac_table
                 send_to_link(i, new_data, len(new_data))
                 if DEBUG:
                     print("[SWITCH] Sending to access interface ", get_interface_name(i))
+            
             # send to all trunk interfaces
-            elif i != recv_interface and vlan_map[i] == 'T' and trunk_interfaces_states[i] == "Listening":
+            elif (i != recv_interface and vlan_map[i] == 'T' and 
+                  trunk_interfaces_states[i] == "Listening"):
+                
                 send_to_link(i, data, length)
                 if DEBUG:
                     print("[SWITCH] Sending to trunk interface ", get_interface_name(i))
 
 
-def forward_package(recv_interface, data, length, mac_table, interfaces, vlan_map, trunk_interfaces_states):
+def forward_package(recv_interface, data, length, mac_table, interfaces, vlan_map,
+                    trunk_interfaces_states):
     dest_mac, src_mac, ethertype, vlan_id = parse_ethernet_header(data)
     
     mac_table[src_mac] = recv_interface
@@ -245,7 +267,8 @@ def forward_package(recv_interface, data, length, mac_table, interfaces, vlan_ma
         print(f'EtherType: {ethertype}')
         print(f'Vlan ID: {vlan_id}')
         print("\n")
-        print("[SWITCH] Received frame of size {} on interface {}".format(length, get_interface_name(recv_interface)))
+        print("[SWITCH] Received frame of size {} on interface {}"
+              .format(length, get_interface_name(recv_interface)))
 
     # new_data is the header with the vlan tag if it doesn't have it 
     # or without the vlan tag if it does have it
@@ -256,18 +279,21 @@ def forward_package(recv_interface, data, length, mac_table, interfaces, vlan_ma
 
     # package came from access interface
     if vlan_id == -1:
-        forward_package_from_access(recv_interface, data, new_data, length, mac_table, interfaces, vlan_map, trunk_interfaces_states)
+        forward_package_from_access(recv_interface, data, new_data, length, mac_table, interfaces,
+                                    vlan_map, trunk_interfaces_states)
     
     # package came from trunk interface
     else:
-        forward_package_from_trunk(recv_interface, data, new_data, length, mac_table, interfaces, vlan_map, trunk_interfaces_states)        
+        forward_package_from_trunk(recv_interface, data, new_data, length, mac_table, interfaces,
+                                   vlan_map, trunk_interfaces_states)        
     
     if DEBUG:
         print("---------------------------------------------\n")
 
 
 def init_stp(switch_priority, interfaces, trunk_interfaces_states, vlan_map):
-    # bridge id is formed by concatenating the mac to the priority bytes, resulting an 8 byte integer
+    # bridge id is formed by concatenating the mac to the priority bytes, resulting an 8 byte
+    # integer
     own_bridge_id = int.from_bytes(switch_priority.to_bytes(2) + get_switch_mac())
     root_bridge_id = own_bridge_id
     root_path_cost = 0
@@ -340,7 +366,8 @@ def main():
             check_bpdu_package(data, own_bridge_id, root_info, trunk_interfaces_states, interface)
 
         else:
-            forward_package(interface, data, length, mac_table, interfaces, vlan_map, trunk_interfaces_states)
+            forward_package(interface, data, length, mac_table, interfaces, vlan_map,
+                            trunk_interfaces_states)
 
 
 if __name__ == "__main__":
