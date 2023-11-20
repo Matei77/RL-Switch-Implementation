@@ -24,7 +24,7 @@ used:
                       the priority bytes, resulting an 8 byte integer
 
 - **root_info** - this represents a list which contains the root_bridge_id, root_path_cost and
-                  root_port. A list is used so the changes of these values are refected across all
+                  root_port. A list is used so the changes of these values are reflected across all
                   functions
 
 The switch priority and the VLAN of each interface is read from the config file.
