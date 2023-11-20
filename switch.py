@@ -48,9 +48,9 @@ class BPDU:
         return  f"Dst MAC: {self.dst_mac}\n" + \
                 f"Src MAC: {self.src_mac}\n" + \
                 f"LLC_Length: {self.llc_length}\n" + \
-                f"Root Bridge ID: {self.root_bridge_id.to_bytes(8)}\n" + \
+                f"Root Bridge ID: {self.root_bridge_id.to_bytes(8, byteorder='big')}\n" + \
                 f"Root Path Cost: {self.sender_path_cost}\n" + \
-                f"Sender Bridge ID: {self.sender_bridge_id.to_bytes(8)}\n" + \
+                f"Sender Bridge ID: {self.sender_bridge_id.to_bytes(8, byteorder='big')}\n" + \
                 f"Port ID: {self.port_id}\n" + \
                 f"Message age: {self.message_age}\n" + \
                 f"Max age: {self.max_age}\n" + \
@@ -293,7 +293,7 @@ def forward_package(recv_interface, data, length, mac_table, interfaces, vlan_ma
 def init_stp(switch_priority, interfaces, trunk_interfaces_states, vlan_map):
     # bridge id is formed by concatenating the mac to the priority bytes, resulting an 8 byte
     # integer
-    own_bridge_id = int.from_bytes(switch_priority.to_bytes(2) + get_switch_mac())
+    own_bridge_id = int.from_bytes(switch_priority.to_bytes(2, byteorder='big') + get_switch_mac(), byteorder='big')
     root_bridge_id = own_bridge_id
     root_path_cost = 0
     root_port = -1
@@ -349,7 +349,7 @@ def main():
         print("[INFO] Switch MAC", ':'.join(f'{b:02x}' for b in get_switch_mac()))
         print("[INFO] Switch Priority: ", switch_priority)
         print("[INFO] VLAN MAP: ", vlan_map)
-        print("[INFO] Bridge ID: ", own_bridge_id, f"({own_bridge_id.to_bytes(8)})")
+        print("[INFO] Bridge ID: ", own_bridge_id, f"({own_bridge_id.to_bytes(8, byteorder='big')})")
         print("\n")
     
     # Create and start a new thread that deals with sending BDPU
