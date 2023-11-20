@@ -55,6 +55,10 @@ all "Listening" trunk interfaces, except the one it came from.
 - if the package came form a trunk interafce and is going to an access interface, the 802.1q header
   is removed.
 
+In order to meet these requirements, when a package is received from a trunk interface the
+`forward_package_from_trunk()` function is called, and when a package is received from an access
+interface the `forward_package_from_access()` function is called.
+
 ### STP
 The `BPDU` class is used to send BPDU packages. The class contains all the fields of the BPDU
 package structure.
