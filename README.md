@@ -18,14 +18,14 @@ used:
 - **vlan_map** - this represents a dictionary that will map an interface to its VLAN
 
 - **trunk_interfaces_states** -  this represents a dictionary that will map a trunk interface to
-								 its state ("Blocking" or "Listening")
+                                 its state ("Blocking" or "Listening")
 
 - **own_bridge_id** - this represent the ID of the switch and is formed by concatenating the mac to
-					  the priority bytes, resulting an 8 byte integer
+                      the priority bytes, resulting an 8 byte integer
 
 - **root_info** - this represents a list which contains the root_bridge_id, root_path_cost and
-				  root_port. A list is used so the changes of these values are refected across all
-				  functions
+                  root_port. A list is used so the changes of these values are refected across all
+                  functions
 
 The switch priority and the VLAN of each interface is read from the config file.
 
@@ -41,9 +41,9 @@ will update the **mac_table** by mapping the source MAC of the package to the in
 the package was received.
 
 If the interface of the destination MAC is known and on "Listening", the package will be sent to
-the destination if the VLAN maches. Otherwise, if the interface of the destination MAC is unkown or
-a broadcast is sent, the package will be forwarded on all access interfaces in the same VLAN and on
-all "Listening" trunk interfaces, except the one it came from.
+the destination if the VLAN matches. Otherwise, if the interface of the destination MAC is unknown
+or a broadcast is sent, the package will be forwarded on all access interfaces in the same VLAN and
+on all "Listening" trunk interfaces, except the one it came from.
 
 ### VLAN
 - if the package came from an access interface and is going to a trunk interface, the 802.1q header
@@ -52,7 +52,7 @@ all "Listening" trunk interfaces, except the one it came from.
   package is not modified
 - if the package came form a trunk interface and is going to another trunk interface, the package
   is not modified
-- if the package came form a trunk interafce and is going to an access interface, the 802.1q header
+- if the package came form a trunk interface and is going to an access interface, the 802.1q header
   is removed.
 
 In order to meet these requirements, when a package is received from a trunk interface the
